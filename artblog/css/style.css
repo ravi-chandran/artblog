@@ -1,0 +1,79 @@
+:root {
+  --main-bg-color: #F8F9FA;
+  
+  --navbar-bg-color: #324376;
+  --navbar-selected-page: #F5DD90;
+  --navbar-hover: #6096BA;
+  --navbar-text-color: white;
+  --navbar-text-color-when-selected: black;
+
+  --link-text-color: #324376;
+  --link-bg-color-when-hover-active: #F5DD90;
+  --link-text-color-when-hover-active: black;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Rubik', sans-serif;
+    padding: 10px;
+    background: var(--main-bg-color);
+    margin: 0;
+  }
+
+ul.navbar-top {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--navbar-bg-color);
+}
+
+ul.navbar-top li a {
+  display: block;
+  color: var(--navbar-text-color);
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+  float: left;
+}
+
+ul.navbar-top li a.right {float: right;}
+
+ul.navbar-top li a:hover:not(.active) {background-color: var(--navbar-hover);}
+ul.navbar-top li a.active {
+  background-color: var(--navbar-selected-page);
+  color: var(--navbar-text-color-when-selected);
+}
+
+/* Responsive navbar */
+@media screen and (max-width: 576px) {
+  ul.navbar-top li a.right, ul.navbar-top li a {
+    float: none;
+  }
+}
+
+/* Publications styling as title and subtitle */
+h3.publication-title a {
+  text-decoration: none;
+  color: var(--link-text-color);
+}
+h3.publication-title a:hover, 
+h3.publication-title a:active {
+  background-color: var(--link-bg-color-when-hover-active);
+  color: var(--link-text-color-when-hover-active);
+}
+
+p.publication-subtitle {
+  margin-top: -15px;
+}
+
+/* Table formatting */
+table, td, th {
+  border: 1px solid black;
+}
+table {
+  border-collapse: collapse;
+}

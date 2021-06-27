@@ -1,0 +1,413 @@
+#!/usr/bin/env python3
+# Standard libraries
+import argparse
+from collections import OrderedDict
+from datetime import datetime
+import glob
+import os
+from pprint import pprint
+import shutil
+import sys
+import urllib
+
+# Installed packages
+import mistune
+import requests
+import slugify
+import yaml
+
+CMDLINE_APP_NAME = 'ArtBlog - a static site generator'
+
+HTML_SRC = 'html'
+CSS_SRC = 'css'
+
+MARKDOWN_EXTENSIONS = ('.md', '.mkd', '.mkdn', '.mdown', '.markdown')
+
+CONFIG_TEMPLATE = '''
+# List of folders where articles are stored
+articles: 
+- ~/Documents/artblog-example-data1
+- ~/Documents/artblog-example-data2
+
+# Where to store generated output
+output: ~/Documents/artblog_output
+
+# Information about yourself and the site
+author: Firstname Lastname
+
+# This doesn't have to be different from your name
+site_name: My Awesome Art Blog
+
+# Include image at the top of every page above the menu
+logo: /data/logo.png
+
+# Note: update license.html using https://creativecommons.org/choose/
+#       for something different from CC by 4.0
+
+# Leave this commented to automatically set to the current year
+# copyright_year: 2021
+
+# Important - Once you set this, don't change it (for SEO reasons)
+# You will need to copy the output to the appropriate folder at your hosting site
+base_url: https://myartblog.com
+
+# Files linked to navigation bar, from left to right
+pages:
+  - index.md
+  - about.md
+'''.lstrip()
+
+
+def get_user_inputs():
+    '''Get user arguments.'''
+    parser = argparse.ArgumentParser(
+        description=CMDLINE_APP_NAME,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('config_yml', help='YAML configuration file')
+    parser.add_argument('--preserve_output', '-p',
+                        action='store_true',
+                        help='if set, current output folder will be preserved')
+    args = parser.parse_args()
+
+    if not os.path.isfile(args.config_yml):
+        print(f'Generating template file: {args.config_yml}')
+        with open(args.config_yml, 'wt', encoding='utf-8') as f:
+            f.write(CONFIG_TEMPLATE)
+        sys.exit(0)
+
+    with open(args.config_yml) as f:
+        # yaml.BaseLoader loads everything as string
+        # yaml.FullLoader interprets as int, etc
+        config = yaml.load(f, Loader=yaml.BaseLoader)
+
+    pprint(config)
+
+    # Check and update directory paths
+    #config['articles'] = check_directory(config['articles'])
+    list_sources = []
+    for directory in config['sources']:
+        list_sources.append(check_directory(directory))
+    config['sources'] = list_sources
+    config['output'] = check_directory(config['output'], warn=False)
+
+    # Clean up and check the URL
+    config['base_url'] = config['base_url'].strip('/')
+    check_url(config['base_url'])
+
+    # Determine page title postfix
+    config['page_title_postfix'] = ''
+    if 'site_name' in config:
+        config['page_title_postfix'] = f" | {config['site_name']}"
+
+    return config, args.preserve_output
+
+
+def check_url(url):
+    """
+    Return True if the URL is valid.
+    """
+    result_ok = False
+    try:
+        result = urllib.parse.urlparse(url)
+        result_ok = all([result.scheme, result.netloc])
+    except ValueError:
+        result_ok = False
+
+    if not result_ok:
+        print(f'WARN: {url} is NOT valid')
+
+    return result_ok
+
+
+def check_directory(path, warn=True):
+    """Check directory and update to a useable path"""
+    if path.startswith('~/'):
+        path = path.replace('~', os.path.expanduser('~'))
+    if warn and not os.path.exists(path):
+        print(f'ERROR: Folder for {k} not found: {path}')
+        sys.exit(1)
+    return path
+
+
+def package_data_File(filepath):
+    """Get file relative to package."""
+    # https://stackoverflow.com/a/1219406
+    return os.path.join(os.path.split(__file__)[0], filepath)
+
+
+def generate_base_html(config):
+    """Generate the base HTML template."""
+    filepath = os.path.join(HTML_SRC, 'base.html')
+    filepath = package_data_File(filepath)
+    with open(filepath, 'rt', encoding='utf-8') as f:
+        base_html = f.read()
+
+    KEYS_TO_REPLACE = ['author', 'base_url', 'copyright_year']
+    if 'copyright_year' not in config:
+        config['copyright_year'] = str(datetime.now().year)
+    for k in KEYS_TO_REPLACE:
+        tag = '{{' + k + '}}'
+        s = config[k]
+        if k=='base_url':
+            s += '/'
+        base_html = base_html.replace(tag, s)
+
+    if 'logo' not in config:
+        base_html = base_html.replace('{{logo}}', '')
+    else:
+        s = '<div class="logo"><img src="{{logo}}" alt="logo"></div>'
+        s = s.replace('{{logo}}', config['logo'])
+        base_html = base_html.replace('{{logo}}', s)
+
+
+    filepath = os.path.join(HTML_SRC, 'license.html')
+    filepath = package_data_File(filepath)
+    with open(filepath, 'rt', encoding='utf-8') as f:
+        s = f.read()
+    base_html = base_html.replace('{{license}}', s)
+    
+    return base_html
+
+
+def markdown_to_html(filepath):
+    """Convert markdown to HTML."""
+    with open(filepath, 'rt', encoding='utf-8') as f:
+        txt = f.read()
+
+    # Separate metadata from markdown text
+    loc = txt.find('---', 3)  # Find 2nd occurrence of "---"
+    if loc < 0:
+        print(f'ERROR: Cannot find metadata in {filepath}')
+        sys.exit(1)
+
+    meta_txt = txt[:loc]
+    md_txt = txt[loc+3:]  # skip over 2nd occurrence of "---"
+
+    # Extract metadata
+    meta = yaml.load(meta_txt, Loader=yaml.BaseLoader)
+
+    # Add title to markdown
+    md_txt = f'# {meta["title"]}\n---\n' + md_txt
+
+    # Convert markdown to html
+    html = mistune.html(md_txt)
+
+    return html, meta
+
+
+def get_title_slug(meta, filepath):
+    """Create a slug from the title."""
+    bad_title = True
+    if 'title' in meta:
+        bad_title = False
+        if len(meta['title']) < 1:
+            bad_title = True
+
+    if bad_title:
+        printf(f'ERROR: bad title metadata in {filepath}')
+        sys.exit(1)
+
+    slug = slugify.slugify(meta['title'], stopwords=['the', 'a'])
+    return slug
+
+
+def generate_navbar_html(title2slug, current_slug=None):
+    """Generate the navigation bar."""
+    # template for each menu line item
+    MENU_LINE = '<li><a class="active" class="right" ' \
+                'href="[HREF]">[VISIBLE]</a></li>'
+
+    count = 0
+    navbar_html = ''
+    for title, slug in title2slug.items():
+        count += 1
+        s = f'      {MENU_LINE}\n'
+        s = s.replace('[VISIBLE]', title)
+        s = s.replace('[HREF]', slug)
+        if slug != current_slug:
+            s = s.replace(' class="active"', '')
+        if count < len(title2slug):
+            s = s.replace(' class="right"', '')
+        navbar_html += s
+
+    navbar_html = navbar_html.strip()
+    return navbar_html
+
+
+def generate_pages(config, base_html):
+    """Generate pages in output folder."""
+    # Create HTML content for each page
+    dct_html = OrderedDict()
+    title2slug = OrderedDict()
+    for page_file in config['pages']:
+        filepath = os.path.join(config['articles'], page_file)
+
+        # Generate html and update fields
+        html, meta = markdown_to_html(filepath)
+        if page_file == 'index.md':
+            html = base_html
+        else:
+            html = base_html.replace('{{content}}', html)
+        s = f'{meta["title"]}' + config['page_title_postfix']
+        html = html.replace('{{page_title}}', s)
+
+        # Update canonical link, slug provides root-relative URL
+        page_file_html = os.path.splitext(page_file)[0] + '.html'
+        meta['slug'] = '/'
+        if page_file != 'index.md':
+            meta['slug'] += page_file_html
+        meta['canonical'] = config['base_url'] + meta['slug']
+        html = html.replace('{{canonical}}', meta['canonical'])
+
+        meta['outfile'] = os.path.join(config['output'], page_file_html)
+        meta['html'] = html
+        meta['page'] = True
+        dct_html[meta['slug']] = meta
+        title2slug[meta["title"]] = meta['slug']
+
+    # Create unique navigation bar for each page
+    for current_slug in dct_html:
+        navbar_html = generate_navbar_html(title2slug, current_slug=current_slug)
+        html = dct_html[current_slug]['html'].replace('{{nav_line_items}}', navbar_html)
+        dct_html[current_slug]['html'] = html
+
+    # Write to output HTML files
+    for _, meta in dct_html.items():
+        with open(meta['outfile'], 'wt', encoding='utf-8') as f:
+            f.write(meta['html'])
+
+    return dct_html, title2slug
+
+
+def generate_articles(config, dct_html, base_html):
+    """Copy articles to output folder as HTML."""
+    skip_page_files = []
+    for page_file in config['pages']:
+        skip_page_files.append(os.path.join(config['articles'], page_file))
+
+    glob_path = os.path.join(config['articles'], '**/*')
+    for filepath in glob.glob(glob_path, recursive=True):
+        if not filepath.endswith(MARKDOWN_EXTENSIONS) or filepath in skip_page_files:
+            continue
+
+        # Generate html and update fields
+        html, meta = markdown_to_html(filepath)
+        html = base_html.replace('{{content}}', html)
+        s = f'{meta["title"]}' + config['page_title_postfix']
+        html = html.replace('{{page_title}}', s)
+
+        # Update canonical link, slug provides root-relative URL
+        meta['slug'] = '/' + get_title_slug(meta, filepath) + '/'
+        if 'canonical' not in meta:
+            meta['canonical'] = config['base_url'] + meta['slug'] 
+        html = html.replace('{{canonical}}', meta['canonical'])
+
+        # Write HTML to file
+        dst_folder = os.path.join(config['output'], meta['slug'].strip('/'))
+        outfile = os.path.join(dst_folder, 'index.html')
+        if not os.path.isdir(dst_folder):
+            os.mkdir(dst_folder)
+
+        with open(outfile, 'wt', encoding='utf-8') as f:
+            f.write(html)
+        meta['outfile'] = outfile
+        meta['html'] = html
+        meta['page'] = False
+        dct_html[meta['slug']] = meta
+
+        # Copy other non-markdown files in article folder
+        article_path, _ = os.path.split(filepath)
+        for src_file in glob.glob(os.path.join(article_path, '*')):
+            if not os.path.isfile(src_file):
+                continue
+            if src_file.endswith(MARKDOWN_EXTENSIONS):
+                continue
+            dst_file = os.path.join(dst_folder, os.path.basename(src_file))
+            shutil.copyfile(src_file, dst_file)
+
+    return dct_html
+
+
+def get_categories(dct_html):
+    """Generate the index page with links to articles."""
+    dct = OrderedDict()
+    for slug, meta in dct_html.items():
+        if meta['page']:
+            continue
+        if 'category' in meta:
+            if meta['category'] not in dct:
+                dct[meta['category']] = []
+            d = OrderedDict()
+            d['title'] = meta['title']
+            d['href'] = meta['slug']
+            dct[meta['category']].append(d.copy())
+
+    return dct
+
+
+def generate_index_html(dct_html):
+    """Generate the index.html given the categorized information."""
+    dct_categories = get_categories(dct_html)
+
+    html = ''
+    for category, list_articles in dct_categories.items():
+        html += f'<h2>{category.title()}</h2>\n'
+        html += '<ul class="categorized-articles">\n'
+        for d in list_articles:
+            s = '<a href="[HREF]">[TITLE]</a>'
+            # s = s.replace('[HREF]', d['href'] + '/index.html')
+            s = s.replace('[HREF]', d['href'])
+            s = s.replace('[TITLE]', d['title'])
+            html += f'<li>{s}</li>\n'
+        html += '</ul>\n'
+
+    dct_html['/']['html'] = dct_html['/']['html'].replace('{{content}}', html)
+
+    with open(dct_html['/']['outfile'], 'wt', encoding='utf-8') as f:
+        f.write(dct_html['/']['html'])
+
+    return dct_categories
+
+
+def main():
+    config, preserve_output = get_user_inputs()
+    base_html = generate_base_html(config)
+
+    # Regenerate output folder
+    if not preserve_output:
+        shutil.rmtree(config['output'], ignore_errors=True)
+        os.mkdir(config['output'])
+
+    # Copy CSS
+    outpath = os.path.join(config['output'], 'css')
+    if not os.path.exists(outpath):
+        os.mkdir(outpath)
+    glob_path = os.path.join(CSS_SRC, '*.css')
+    for filepath in glob.glob(glob_path):
+        shutil.copy(filepath, outpath)
+
+    # Copy data folder
+    shutil.copytree(
+        os.path.join(config['articles'], 'data'),
+        os.path.join(config['output'], 'data'),
+        dirs_exist_ok=True
+    )
+
+    # Generate page HTML files
+    dct_html, title2slug = generate_pages(config, base_html)
+
+    # Update base_html with navigation bar
+    navbar_html = generate_navbar_html(title2slug)
+    base_html = base_html.replace('{{nav_line_items}}', navbar_html)
+
+    # Generate article HTML files
+    dct_html = generate_articles(config, dct_html, base_html)
+
+    # Generate the Home page content (index.html)
+    dct_categories = generate_index_html(dct_html)
+ 
+    print('Done.')
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- <base href="{{base_url}}" target="_blank"> -->
+  <link rel="canonical" href="{{canonical}}">
+  <link rel="icon" href="/data/favicon.png">
+
+  <!-- Rubik regular 400 google font -->
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+  
+  <title>{{page_title}}</title>
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+</head>
+
+<body>
+  {{logo}}
+  <nav>
+    <ul class="navbar-top">
+      {{nav_line_items}}
+    </ul>
+ </nav>
+
+ <main>
+    {{content}}
+ </main>
+
+ <footer>
+   <hr>
+  <p>
+    &copy; {{copyright_year}}
+    <a href="{{base_url}}">{{author}}</a>
+  </p>
+  {{license}}
+</footer>
+
+</body>
+</html>
