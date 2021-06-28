@@ -1,5 +1,5 @@
 # List of folders where articles are stored
-articles:
+sources:
 - ~/Documents/artblog-example-data1/content
 - ~/Documents/artblog-example-data2/content
 
