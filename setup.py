@@ -11,15 +11,9 @@ setuptools.setup(
     package_dir={'artblog': 'artblog'},
     package_data={
         'artblog': ['html/*.html'],
-        'artblog': ['css/*.css']
+        'artblog': ['css/*.css'],
+        'artblog': ['config/*.yml']
         },
-    #packages=setuptools.find_packages(),
-
-    # include_package_data=True,
-    # package_data={
-    #     "artblog": ["css/*.css"],
-    #     "artblog": ["html/*.html"],
-    # },
 
     entry_points={
         'console_scripts': [
