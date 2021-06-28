@@ -12,9 +12,13 @@ Limitations:
 - No e-commerce features
 
 ## Easy To Use
-- **Install**: `python -m pip install artblog`
-- **Generate config.yml**: artblog
-- **Configure**: Edit a `config.yml` file
-- **Generate**: `artblog path/to/config.yml`
-- **Copy to your web host**: `scp -r output/* hosting_site:~/www/.`
+1. **Install**: `python -m pip install artblog`
+2. **Generate config.yml template**: `artblog path/to/config.yml`
+3. **Configure**: Edit the `path/to/config.yml` file
+4. **Generate**: `artblog path/to/config.yml`
+5. **Copy to your web host**: `scp -r output/* hosting_site:~/www/.`
+
+The `config.yml` file is where you specify the information about your site's URL, locations of your content, etc. In step 2 above, you specify where you want to create the template for `config.yml`. After that, you edit this file.
+
+Steps 4 and 5 are repeated as you add articles over time.
 
