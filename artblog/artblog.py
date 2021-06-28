@@ -56,12 +56,17 @@ def get_user_inputs():
     pprint(config)
 
     # Check and update directory paths
-    #config['articles'] = check_directory(config['articles'])
     list_sources = []
     for directory in config['sources']:
         list_sources.append(check_directory(directory))
     config['sources'] = list_sources
     config['output'] = check_directory(config['output'], warn=False)
+
+    # Check logo and favicon if present
+    if 'logo' in config:
+        config['logo'] = check_file(config['logo'])
+    if 'favicon' in config:
+        config['favicon'] = check_file(config['favicon'])
 
     # Clean up and check the URL
     config['base_url'] = config['base_url'].strip('/')
@@ -98,6 +103,16 @@ def check_directory(path, warn=True):
         path = path.replace('~', os.path.expanduser('~'))
     if warn and not os.path.exists(path):
         print(f'ERROR: Folder not found: {path}')
+        sys.exit(1)
+    return path
+
+
+def check_file(path, warn=True):
+    """Check file and update to a useable path"""
+    if path.startswith('~/'):
+        path = path.replace('~', os.path.expanduser('~'))
+    if warn and not os.path.isfile(path):
+        print(f'ERROR: File not found: {path}')
         sys.exit(1)
     return path
 
@@ -148,14 +163,18 @@ def generate_base_html(config, base_html, license_html):
             s += '/'
         base_html = base_html.replace(tag, s)
 
+    base_html = base_html.replace('{{license}}', license_html)
+
+    outpath = os.path.join(config['output'], 'site_images')
+    if not os.path.exists(outpath):
+        os.mkdir(outpath)
+
     if 'logo' not in config:
         base_html = base_html.replace('{{logo}}', '')
     else:
         s = '<div class="logo"><img src="{{logo}}" alt="logo"></div>'
         s = s.replace('{{logo}}', config['logo'])
         base_html = base_html.replace('{{logo}}', s)
-
-    base_html = base_html.replace('{{license}}', license_html)
 
     return base_html
 
