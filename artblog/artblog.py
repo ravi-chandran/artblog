@@ -362,16 +362,17 @@ def generate_index_html(dct_html):
 
 def main():
     config, preserve_output = get_user_inputs()
-    base_html, license_html, style_css = read_package_data_files()
-    base_html = generate_base_html(config, base_html, license_html)
 
     # Regenerate output folder
     if not preserve_output:
         shutil.rmtree(config['output'], ignore_errors=True)
         os.mkdir(config['output'])
 
-    # Create style.css
+    base_html, license_html, style_css = read_package_data_files()
+    base_html = generate_base_html(config, base_html, license_html)
     generate_style_css(config, style_css)
+
+    #TODO: continue work from here
 
     # Generate page HTML files
     dct_html, title2slug = generate_pages(config, base_html)
