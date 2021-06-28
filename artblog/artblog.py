@@ -169,13 +169,26 @@ def generate_base_html(config, base_html, license_html):
     if not os.path.exists(outpath):
         os.mkdir(outpath)
 
+    if 'favicon' not in config:
+        base_html = base_html.replace('{{favicon}}', '')
+    else:
+        faviconfile = '/site_images/' + os.path.basename(config['favicon'])
+        s = f'<link rel="icon" href="{faviconfile}">'
+        base_html = base_html.replace('{{favicon}}', s)
+        dstfile = os.path.join(outpath, os.path.basename(config['favicon']))
+        print(config['favicon'])
+        shutil.copyfile(config['favicon'], dstfile)
+
     if 'logo' not in config:
         base_html = base_html.replace('{{logo}}', '')
     else:
-        s = '<div class="logo"><img src="{{logo}}" alt="logo"></div>'
-        s = s.replace('{{logo}}', config['logo'])
+        logofile = '/site_images/' + os.path.basename(config['logo'])
+        s = f'<div class="logo"><img src="{logofile}" alt="logo"></div>'
         base_html = base_html.replace('{{logo}}', s)
+        dstfile = os.path.join(outpath, os.path.basename(config['logo']))
+        shutil.copyfile(config['logo'], dstfile)
 
+    print(base_html)
     return base_html
 
 
