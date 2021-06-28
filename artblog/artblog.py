@@ -18,44 +18,12 @@ import yaml
 
 CMDLINE_APP_NAME = 'ArtBlog - a static site generator'
 
-HTML_SRC = 'html'
-CSS_SRC = 'css'
+DATA_HTML_BASE = os.path.join('html', 'base.html')
+DATA_HTML_LICENSE = os.path.join('html', 'license.html')
+DATA_CSS_STYLE = os.path.join('css', 'style.css')
+CONFIG_TEMPLATE = os.path.join('config', 'config.yml')
 
 MARKDOWN_EXTENSIONS = ('.md', '.mkd', '.mkdn', '.mdown', '.markdown')
-
-CONFIG_TEMPLATE = '''
-# List of folders where articles are stored
-articles: 
-- ~/Documents/artblog-example-data1
-- ~/Documents/artblog-example-data2
-
-# Where to store generated output
-output: ~/Documents/artblog_output
-
-# Information about yourself and the site
-author: Firstname Lastname
-
-# This doesn't have to be different from your name
-site_name: My Awesome Art Blog
-
-# Include image at the top of every page above the menu
-logo: /data/logo.png
-
-# Note: update license.html using https://creativecommons.org/choose/
-#       for something different from CC by 4.0
-
-# Leave this commented to automatically set to the current year
-# copyright_year: 2021
-
-# Important - Once you set this, don't change it (for SEO reasons)
-# You will need to copy the output to the appropriate folder at your hosting site
-base_url: https://myartblog.com
-
-# Files linked to navigation bar, from left to right
-pages:
-  - index.md
-  - about.md
-'''.lstrip()
 
 
 def get_user_inputs():
@@ -71,8 +39,13 @@ def get_user_inputs():
 
     if not os.path.isfile(args.config_yml):
         print(f'Generating template file: {args.config_yml}')
+
+        with open(package_data_file(CONFIG_TEMPLATE),
+                'rt', encoding='utf-8') as f:
+            config_yml_txt = f.read()
+
         with open(args.config_yml, 'wt', encoding='utf-8') as f:
-            f.write(CONFIG_TEMPLATE)
+            f.write(config_yml_txt)
         sys.exit(0)
 
     with open(args.config_yml) as f:
@@ -124,24 +97,47 @@ def check_directory(path, warn=True):
     if path.startswith('~/'):
         path = path.replace('~', os.path.expanduser('~'))
     if warn and not os.path.exists(path):
-        print(f'ERROR: Folder for {k} not found: {path}')
+        print(f'ERROR: Folder not found: {path}')
         sys.exit(1)
     return path
 
 
-def package_data_File(filepath):
+def package_data_file(filepath):
     """Get file relative to package."""
     # https://stackoverflow.com/a/1219406
-    return os.path.join(os.path.split(__file__)[0], filepath)
+    filepath = os.path.join(os.path.split(__file__)[0], filepath)
+    return filepath
 
 
-def generate_base_html(config):
-    """Generate the base HTML template."""
-    filepath = os.path.join(HTML_SRC, 'base.html')
-    filepath = package_data_File(filepath)
-    with open(filepath, 'rt', encoding='utf-8') as f:
+def read_package_data_files():
+    """Read package data files and return the text."""
+    with open(package_data_file(DATA_HTML_BASE),
+                'rt', encoding='utf-8') as f:
         base_html = f.read()
 
+    with open(package_data_file(DATA_HTML_LICENSE),
+                'rt', encoding='utf-8') as f:
+        license_html = f.read()
+
+    with open(package_data_file(DATA_CSS_STYLE),
+                'rt', encoding='utf-8') as f:
+        style_css = f.read()
+
+    return base_html, license_html, style_css
+
+
+def generate_style_css(config, style_css):
+    """Generate style.css in output folder."""
+    outpath = os.path.join(config['output'], 'css')
+    if not os.path.exists(outpath):
+        os.mkdir(outpath)
+    outfile = os.path.join(config['output'], DATA_CSS_STYLE)
+    with open(outfile, 'wt', encoding='utf-8') as f:
+        f.write(style_css)
+
+
+def generate_base_html(config, base_html, license_html):
+    """Generate the base HTML template."""
     KEYS_TO_REPLACE = ['author', 'base_url', 'copyright_year']
     if 'copyright_year' not in config:
         config['copyright_year'] = str(datetime.now().year)
@@ -159,13 +155,8 @@ def generate_base_html(config):
         s = s.replace('{{logo}}', config['logo'])
         base_html = base_html.replace('{{logo}}', s)
 
+    base_html = base_html.replace('{{license}}', license_html)
 
-    filepath = os.path.join(HTML_SRC, 'license.html')
-    filepath = package_data_File(filepath)
-    with open(filepath, 'rt', encoding='utf-8') as f:
-        s = f.read()
-    base_html = base_html.replace('{{license}}', s)
-    
     return base_html
 
 
@@ -204,7 +195,7 @@ def get_title_slug(meta, filepath):
             bad_title = True
 
     if bad_title:
-        printf(f'ERROR: bad title metadata in {filepath}')
+        print(f'ERROR: bad title metadata in {filepath}')
         sys.exit(1)
 
     slug = slugify.slugify(meta['title'], stopwords=['the', 'a'])
@@ -299,7 +290,7 @@ def generate_articles(config, dct_html, base_html):
         # Update canonical link, slug provides root-relative URL
         meta['slug'] = '/' + get_title_slug(meta, filepath) + '/'
         if 'canonical' not in meta:
-            meta['canonical'] = config['base_url'] + meta['slug'] 
+            meta['canonical'] = config['base_url'] + meta['slug']
         html = html.replace('{{canonical}}', meta['canonical'])
 
         # Write HTML to file
@@ -371,27 +362,16 @@ def generate_index_html(dct_html):
 
 def main():
     config, preserve_output = get_user_inputs()
-    base_html = generate_base_html(config)
+    base_html, license_html, style_css = read_package_data_files()
+    base_html = generate_base_html(config, base_html, license_html)
 
     # Regenerate output folder
     if not preserve_output:
         shutil.rmtree(config['output'], ignore_errors=True)
         os.mkdir(config['output'])
 
-    # Copy CSS
-    outpath = os.path.join(config['output'], 'css')
-    if not os.path.exists(outpath):
-        os.mkdir(outpath)
-    glob_path = os.path.join(CSS_SRC, '*.css')
-    for filepath in glob.glob(glob_path):
-        shutil.copy(filepath, outpath)
-
-    # Copy data folder
-    shutil.copytree(
-        os.path.join(config['articles'], 'data'),
-        os.path.join(config['output'], 'data'),
-        dirs_exist_ok=True
-    )
+    # Create style.css
+    generate_style_css(config, style_css)
 
     # Generate page HTML files
     dct_html, title2slug = generate_pages(config, base_html)
@@ -405,7 +385,7 @@ def main():
 
     # Generate the Home page content (index.html)
     dct_categories = generate_index_html(dct_html)
- 
+
     print('Done.')
 
 
