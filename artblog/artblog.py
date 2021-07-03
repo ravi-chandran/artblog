@@ -61,10 +61,11 @@ def get_user_inputs():
     config['output'] = check_directory(config['output'], warn=False)
 
     # Check and update page source file paths
+    config['pages_folder'] = check_directory(config['pages_folder'])
     list_pages = []
-    for page_filepath in config['page_sources']:
+    for page_filename in config['pages_order']:
+        page_filepath = os.path.join(config['pages_folder'], page_filename)
         list_pages.append(check_file(page_filepath))
-    config['page_sources'] = list_pages
 
     # Check logo and favicon if present
     if 'logo' in config:
@@ -270,10 +271,17 @@ def generate_navbar_html(title2slug, current_slug=None):
 
 def generate_pages(config, base_html):
     """Generate pages in output folder."""
+    # Copy files except page source .md files to output
+    shutil.copytree(
+            config['pages_folder'],
+            config['output'],
+            dirs_exist_ok=True)
+
     # Create HTML content for each page
     dct_html = OrderedDict()
     title2slug = OrderedDict()
-    for filepath in config['page_sources']:
+    for page_file in config['pages_order']:
+        filepath = os.path.join(config['output'], page_file)
         page_file = os.path.basename(filepath)
 
         # Generate html and update fields
@@ -284,6 +292,9 @@ def generate_pages(config, base_html):
             html = base_html.replace('{{content}}', html)
         s = f'{meta["title"]}' + config['page_title_postfix']
         html = html.replace('{{page_title}}', s)
+
+        # Remove source markdown from output
+        os.remove(filepath)
 
         # Update canonical link, slug provides root-relative URL
         page_file_html = os.path.splitext(page_file)[0] + '.html'
@@ -414,16 +425,14 @@ def main():
     base_html = generate_base_html(config, base_html, license_html)
     generate_style_css(config, style_css)
 
-    #TODO: continue work from here
-
     # Generate page HTML files
     dct_html, title2slug = generate_pages(config, base_html)
-    pprint(title2slug)
-
 
     # Update base_html with navigation bar
     navbar_html = generate_navbar_html(title2slug)
     base_html = base_html.replace('{{nav_line_items}}', navbar_html)
+
+    #TODO: continue work from here
 
     # Generate article HTML files
     dct_html = generate_articles(config, dct_html, base_html)
