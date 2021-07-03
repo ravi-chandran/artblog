@@ -23,7 +23,7 @@ DATA_HTML_LICENSE = os.path.join('html', 'license.html')
 DATA_CSS_STYLE = os.path.join('css', 'style.css')
 CONFIG_TEMPLATE = os.path.join('config', 'config.yml')
 
-MARKDOWN_EXTENSIONS = ('.md', '.mkd', '.mkdn', '.mdown', '.markdown')
+MARKDOWN_EXTENSIONS = ('.md')
 
 
 def get_user_inputs():
