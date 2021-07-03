@@ -1,9 +1,11 @@
 # List of folders where articles are stored
+# Content from multiple sources must be unique!
 sources:
 - ~/Documents/artblog-example-data1/content
 - ~/Documents/artblog-example-data2/content
 
 # Folder where pages are stored
+# Must not be in a subfolder where articles are stored
 pages_folder: ~/Documents/artblog-example-data1/pages/
 
 # Order in which pages are to appear in menu
