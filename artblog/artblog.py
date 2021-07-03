@@ -282,7 +282,7 @@ def generate_pages(config, base_html):
     dct_html = OrderedDict()
     title2slug = OrderedDict()
     for page_file in config['pages_order']:
-        filepath = os.path.join(config['output'], page_file)
+        filepath = os.path.join(output_pages, page_file)
         page_file = os.path.basename(filepath)
 
         # Generate html and update fields
@@ -301,11 +301,14 @@ def generate_pages(config, base_html):
         page_file_html = os.path.splitext(page_file)[0] + '.html'
         meta['slug'] = '/'
         if page_file != 'index.md':
-            meta['slug'] += page_file_html
+            meta['slug'] += 'pages/' + page_file_html
         meta['canonical'] = config['base_url'] + meta['slug']
         html = html.replace('{{canonical}}', meta['canonical'])
 
-        meta['outfile'] = os.path.join(config['output'], page_file_html)
+        if page_file != 'index.md':
+            meta['outfile'] = os.path.join(output_pages, page_file_html)
+        else:
+            meta['outfile'] = os.path.join(config['output'], page_file_html)
         meta['html'] = html
         meta['page'] = True
         dct_html[meta['slug']] = meta
