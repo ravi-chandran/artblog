@@ -272,9 +272,10 @@ def generate_navbar_html(title2slug, current_slug=None):
 def generate_pages(config, base_html):
     """Generate pages in output folder."""
     # Copy files except page source .md files to output
+    output_pages = os.path.join(config['output'], 'pages')
     shutil.copytree(
             config['pages_folder'],
-            config['output'],
+            output_pages,
             dirs_exist_ok=True)
 
     # Create HTML content for each page
