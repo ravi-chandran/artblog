@@ -53,14 +53,18 @@ def get_user_inputs():
         # yaml.FullLoader interprets as int, etc
         config = yaml.load(f, Loader=yaml.BaseLoader)
 
-    pprint(config)
-
     # Check and update directory paths
     list_sources = []
     for directory in config['sources']:
         list_sources.append(check_directory(directory))
     config['sources'] = list_sources
     config['output'] = check_directory(config['output'], warn=False)
+
+    # Check and update page source file paths
+    list_pages = []
+    for page_filepath in config['page_sources']:
+        list_pages.append(check_file(page_filepath))
+    config['page_sources'] = list_pages
 
     # Check logo and favicon if present
     if 'logo' in config:
@@ -141,6 +145,15 @@ def read_package_data_files():
     return base_html, license_html, style_css
 
 
+def remove_directory_contents(path_to_folder):
+    """Remove contents of directory without deleting the directory."""
+    for root, dirs, files in os.walk(path_to_folder):
+        for f in files:
+            os.remove(os.path.join(root, f))
+        for d in dirs:
+            shutil.rmtree(os.path.join(root, d))
+
+
 def generate_style_css(config, style_css):
     """Generate style.css in output folder."""
     outpath = os.path.join(config['output'], 'css')
@@ -176,7 +189,6 @@ def generate_base_html(config, base_html, license_html):
         s = f'<link rel="icon" href="{faviconfile}">'
         base_html = base_html.replace('{{favicon}}', s)
         dstfile = os.path.join(outpath, os.path.basename(config['favicon']))
-        print(config['favicon'])
         shutil.copyfile(config['favicon'], dstfile)
 
     if 'logo' not in config:
@@ -188,7 +200,6 @@ def generate_base_html(config, base_html, license_html):
         dstfile = os.path.join(outpath, os.path.basename(config['logo']))
         shutil.copyfile(config['logo'], dstfile)
 
-    print(base_html)
     return base_html
 
 
@@ -262,8 +273,8 @@ def generate_pages(config, base_html):
     # Create HTML content for each page
     dct_html = OrderedDict()
     title2slug = OrderedDict()
-    for page_file in config['pages']:
-        filepath = os.path.join(config['articles'], page_file)
+    for filepath in config['page_sources']:
+        page_file = os.path.basename(filepath)
 
         # Generate html and update fields
         html, meta = markdown_to_html(filepath)
@@ -397,8 +408,7 @@ def main():
 
     # Regenerate output folder
     if not preserve_output:
-        shutil.rmtree(config['output'], ignore_errors=True)
-        os.mkdir(config['output'])
+        remove_directory_contents(config['output'])
 
     base_html, license_html, style_css = read_package_data_files()
     base_html = generate_base_html(config, base_html, license_html)
@@ -408,6 +418,8 @@ def main():
 
     # Generate page HTML files
     dct_html, title2slug = generate_pages(config, base_html)
+    pprint(title2slug)
+
 
     # Update base_html with navigation bar
     navbar_html = generate_navbar_html(title2slug)
