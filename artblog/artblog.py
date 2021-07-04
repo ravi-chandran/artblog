@@ -336,7 +336,7 @@ def generate_posts(config, dct_html, base_html):
         post_folder = os.path.split(post_folder)[1]
         meta['slug'] = 'posts/' + post_folder + '/'
         if 'canonical' not in meta:
-            meta['canonical'] = config['base_url'] + meta['slug']
+            meta['canonical'] = config['base_url'] + '/' + meta['slug']
         html = html.replace('{{canonical}}', meta['canonical'])
 
         # Write HTML to file
@@ -375,7 +375,6 @@ def get_categories(dct_html):
 def generate_index_html(dct_html):
     """Generate the index.html given the categorized information."""
     dct_categories = get_categories(dct_html)
-
     html = ''
     for category, list_posts in dct_categories.items():
         html += f'<h2>{category.title()}</h2>\n'
@@ -413,8 +412,6 @@ def main():
     # Update base_html with navigation bar
     navbar_html = generate_navbar_html(title2slug)
     base_html = base_html.replace('{{nav_line_items}}', navbar_html)
-
-    #TODO: continue work from here
 
     # Generate article HTML files
     dct_html = generate_posts(config, dct_html, base_html)
