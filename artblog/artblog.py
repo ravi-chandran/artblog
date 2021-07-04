@@ -13,7 +13,6 @@ import urllib
 # Installed packages
 import mistune
 import requests
-import slugify
 import yaml
 
 CMDLINE_APP_NAME = 'ArtBlog - a static site generator'
@@ -54,10 +53,10 @@ def get_user_inputs():
         config = yaml.load(f, Loader=yaml.BaseLoader)
 
     # Check and update directory paths
-    list_sources = []
+    list_post_sources = []
     for directory in config['sources']:
-        list_sources.append(check_directory(directory))
-    config['sources'] = list_sources
+        list_post_sources.append(check_directory(directory))
+    config['sources'] = list_post_sources
     config['output'] = check_directory(config['output'], warn=False)
 
     # Check and update page source file paths
@@ -230,22 +229,6 @@ def markdown_to_html(filepath):
     return html, meta
 
 
-def get_title_slug(meta, filepath):
-    """Create a slug from the title."""
-    bad_title = True
-    if 'title' in meta:
-        bad_title = False
-        if len(meta['title']) < 1:
-            bad_title = True
-
-    if bad_title:
-        print(f'ERROR: bad title metadata in {filepath}')
-        sys.exit(1)
-
-    slug = slugify.slugify(meta['title'], stopwords=['the', 'a'])
-    return slug
-
-
 def generate_navbar_html(title2slug, current_slug=None):
     """Generate the navigation bar."""
     # template for each menu line item
@@ -271,7 +254,7 @@ def generate_navbar_html(title2slug, current_slug=None):
 
 def generate_pages(config, base_html):
     """Generate pages in output folder."""
-    # Copy files except page source .md files to output
+    # Copy page .md files to output
     output_pages = os.path.join(config['output'], 'pages')
     shutil.copytree(
             config['pages_folder'],
@@ -287,15 +270,13 @@ def generate_pages(config, base_html):
 
         # Generate html and update fields
         html, meta = markdown_to_html(filepath)
+        os.remove(filepath)  # Remove source markdown from output
         if page_file == 'index.md':
             html = base_html
         else:
             html = base_html.replace('{{content}}', html)
         s = f'{meta["title"]}' + config['page_title_postfix']
         html = html.replace('{{page_title}}', s)
-
-        # Remove source markdown from output
-        os.remove(filepath)
 
         # Update canonical link, slug provides root-relative URL
         page_file_html = os.path.splitext(page_file)[0] + '.html'
@@ -328,25 +309,32 @@ def generate_pages(config, base_html):
     return dct_html, title2slug
 
 
-def generate_articles(config, dct_html, base_html):
-    """Copy articles to output folder as HTML."""
-    skip_page_files = []
-    for page_file in config['pages']:
-        skip_page_files.append(os.path.join(config['articles'], page_file))
+def generate_posts(config, dct_html, base_html):
+    """Copy posts to output folder as HTML."""
+    # Copy post .md files to output
+    output_posts = os.path.join(config['output'], 'posts')
+    for posts_folder in config['sources']:
+        shutil.copytree(
+                posts_folder,
+                output_posts,
+                dirs_exist_ok=True)
 
-    glob_path = os.path.join(config['articles'], '**/*')
+    glob_path = os.path.join(output_posts, '**/*')
     for filepath in glob.glob(glob_path, recursive=True):
-        if not filepath.endswith(MARKDOWN_EXTENSIONS) or filepath in skip_page_files:
+        if not filepath.endswith(MARKDOWN_EXTENSIONS):
             continue
 
         # Generate html and update fields
         html, meta = markdown_to_html(filepath)
+        os.remove(filepath)  # Delete post .md file
         html = base_html.replace('{{content}}', html)
         s = f'{meta["title"]}' + config['page_title_postfix']
         html = html.replace('{{page_title}}', s)
 
         # Update canonical link, slug provides root-relative URL
-        meta['slug'] = '/' + get_title_slug(meta, filepath) + '/'
+        post_folder = os.path.split(filepath)[0]
+        post_folder = os.path.split(post_folder)[1]
+        meta['slug'] = 'posts/' + post_folder + '/'
         if 'canonical' not in meta:
             meta['canonical'] = config['base_url'] + meta['slug']
         html = html.replace('{{canonical}}', meta['canonical'])
@@ -364,21 +352,11 @@ def generate_articles(config, dct_html, base_html):
         meta['page'] = False
         dct_html[meta['slug']] = meta
 
-        # Copy other non-markdown files in article folder
-        article_path, _ = os.path.split(filepath)
-        for src_file in glob.glob(os.path.join(article_path, '*')):
-            if not os.path.isfile(src_file):
-                continue
-            if src_file.endswith(MARKDOWN_EXTENSIONS):
-                continue
-            dst_file = os.path.join(dst_folder, os.path.basename(src_file))
-            shutil.copyfile(src_file, dst_file)
-
     return dct_html
 
 
 def get_categories(dct_html):
-    """Generate the index page with links to articles."""
+    """Generate the index page with links to posts."""
     dct = OrderedDict()
     for slug, meta in dct_html.items():
         if meta['page']:
@@ -399,10 +377,10 @@ def generate_index_html(dct_html):
     dct_categories = get_categories(dct_html)
 
     html = ''
-    for category, list_articles in dct_categories.items():
+    for category, list_posts in dct_categories.items():
         html += f'<h2>{category.title()}</h2>\n'
         html += '<ul class="categorized-articles">\n'
-        for d in list_articles:
+        for d in list_posts:
             s = '<a href="[HREF]">[TITLE]</a>'
             # s = s.replace('[HREF]', d['href'] + '/index.html')
             s = s.replace('[HREF]', d['href'])
@@ -439,7 +417,7 @@ def main():
     #TODO: continue work from here
 
     # Generate article HTML files
-    dct_html = generate_articles(config, dct_html, base_html)
+    dct_html = generate_posts(config, dct_html, base_html)
 
     # Generate the Home page content (index.html)
     dct_categories = generate_index_html(dct_html)
