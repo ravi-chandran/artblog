@@ -29,9 +29,10 @@ CONTENT_FOLDER_2 = os.path.join(BASE_FOLDER, 'content2')
 HEAD = '''
 ---
 title: {{TITLE}}
-category: Art Blog {{CATEGORY}}
+category: {{CATEGORY}}
 tags: blogging, artblog, static site generation
 summary: {{SUMMARY}}
+image: {{FILENAME}}
 ---
 
 '''.lstrip()
@@ -94,6 +95,8 @@ def generate_data(random_seed, content_folder, first_article, num_articles):
         txt = txt.replace('{{SUMMARY}}', summary)
 
         txt = txt.replace('{{CATEGORY}}', f'Category {rgb_color[0] % 4}')
+
+        txt = txt.replace('{{FILENAME}}', imgfilename)
 
         txt += MD_IMG_INSERT.replace('{{FILENAME}}', imgfilename)
         txt += summary + '\n\n'
