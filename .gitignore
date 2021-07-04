@@ -1,6 +1,5 @@
 .vscode/
 venv1/
-quicktest.bat
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
