@@ -23,7 +23,6 @@ setuptools.setup(
 
     python_requires=">=3.6",
     install_requires=[
-        "python-slugify",
         "requests",
         "pyyaml",
         "mistune==2.0.0rc1"

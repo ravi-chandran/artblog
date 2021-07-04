@@ -10,7 +10,7 @@ venv1\Scripts\python -m pip install --upgrade pip setuptools build twine pycodes
 
 Packages needed for `artblog` itself:
 ```bat
-venv1\Scripts\python -m pip install --upgrade python-slugify requests pyyaml
+venv1\Scripts\python -m pip install --upgrade requests pyyaml
 venv1\Scripts\python -m pip install mistune==2.0.0rc1
 ```
 
