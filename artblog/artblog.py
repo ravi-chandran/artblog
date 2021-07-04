@@ -378,9 +378,9 @@ def generate_index_html(dct_html):
     html = ''
     for category, list_posts in dct_categories.items():
         html += f'<h2>{category.title()}</h2>\n'
-        html += '<ul class="categorized-articles">\n'
+        html += '<ul class="categorized-posts">\n'
         for d in list_posts:
-            s = '<a href="[HREF]">[TITLE]</a>'
+            s = '<h3 class="post-title"><a href="[HREF]">[TITLE]</a></h3>'
             s = s.replace('[HREF]', d['href'])
             s = s.replace('[TITLE]', d['title'])
             html += f'<li>{s}</li>\n'

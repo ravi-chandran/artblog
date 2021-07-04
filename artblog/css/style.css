@@ -10,6 +10,7 @@
   --link-text-color: #324376;
   --link-bg-color-when-hover-active: #F5DD90;
   --link-text-color-when-hover-active: black;
+  --link-text-color-when-visited: grey;
 }
 
 * {
@@ -56,12 +57,15 @@ ul.navbar-top li a.active {
 }
 
 /* Publications styling as title and subtitle */
-h3.publication-title a {
+h3.post-title a:link {
   text-decoration: none;
   color: var(--link-text-color);
 }
-h3.publication-title a:hover, 
-h3.publication-title a:active {
+h3.post-title a:visited {
+  color: var(--link-text-color-when-visited);
+}
+h3.post-title a:hover, 
+h3.post-title a:active {
   background-color: var(--link-bg-color-when-hover-active);
   color: var(--link-text-color-when-hover-active);
 }
