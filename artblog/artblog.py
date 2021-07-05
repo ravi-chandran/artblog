@@ -52,6 +52,15 @@ Disallow: /cgi-bin/
 Disallow: /tmp/
 '''.lstrip()
 
+PROPERTY = '''
+  <meta property="og:site_name" content="{{base_url}}">
+  <meta property="og:title" content="{{page_title}}">
+  <meta property="og:url" content="{{canonical}}">
+  <meta property="og:description" content="{{title}}">
+  <meta property="og:type" content="article">
+  <meta property="article:tag" content="{{category}}">
+'''.lstrip()
+
 def get_user_inputs():
     '''Get user arguments.'''
     parser = argparse.ArgumentParser(
@@ -315,6 +324,7 @@ def generate_mainpage(config, base_html, cat2slug):
     html = base_html.replace('{{content}}', html)
     s = 'Main' + config['page_title_postfix']
     html = html.replace('{{page_title}}', s)
+    html = html.replace('{{property}}', '')
 
     # Update canonical link, slug provides root-relative URL
     mainpage_html = os.path.splitext(filepath)[0] + '.html'
@@ -348,7 +358,8 @@ def generate_posts(config, base_html, cat2slug):
         html, meta = markdown_to_html(filepath)
         os.remove(filepath)  # Delete post .md file
         html = base_html.replace('{{content}}', html)
-        s = f'{meta["title"]}' + config['page_title_postfix']
+        html = html.replace('{{property}}', PROPERTY)
+        s = meta["title"] + config['page_title_postfix']
         html = html.replace('{{page_title}}', s)
 
         # Update canonical link, slug provides root-relative URL
@@ -363,6 +374,12 @@ def generate_posts(config, base_html, cat2slug):
         navbar_html = generate_navbar_html(
             cat2slug, active_category=meta['category'])
         html = html.replace('{{nav_line_items}}', navbar_html)
+
+        # Add remaining property info
+        html = html.replace('{{base_url}}', config['base_url'])
+        html = html.replace('{{title}}', meta["title"])
+        html = html.replace('{{category}}', meta["category"])
+        
 
         # Write HTML to file
         dst_folder = os.path.join(config['output'], meta['slug'].strip('/'))
@@ -425,6 +442,8 @@ def generate_category_pages(config, base_html, dct_html, cat2slug):
 
         # Update canonical link, slug provides root-relative URL
         html = html.replace('{{canonical}}', slug)
+
+        html = html.replace('{{property}}', '')
 
         # Write to output HTML files
         filepath = os.path.join(config['output'], slug, 'index.html')
