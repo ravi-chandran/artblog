@@ -24,6 +24,18 @@ CONFIG_TEMPLATE = os.path.join('config', 'config.yml')
 
 MARKDOWN_EXTENSIONS = ('.md')
 
+POST_LINK = '''
+<div class="row-post">
+  <div class="column-image">
+    <a href="[HREF]"><img src="[IMAGE]" alt="image" class="post-image"></a>
+  </div>
+  <div class="column-text">
+    <h3 class="post-title"><a href="[HREF]">[TITLE]</a></h3>
+    <p class="post-summary">[SUMMARY]</p>
+  </div>
+</div>
+
+'''.lstrip()
 
 def get_user_inputs():
     '''Get user arguments.'''
@@ -367,6 +379,15 @@ def get_categories(dct_html):
             d = OrderedDict()
             d['title'] = meta['title']
             d['href'] = meta['slug']
+            
+            d['summary'] = ''
+            if 'summary' in meta:
+                d['summary'] = meta['summary']
+            
+            d['image'] = ''
+            if 'image' in meta:
+                d['image'] = meta['image']
+
             dct[meta['category']].append(d.copy())
 
     return dct
@@ -378,13 +399,13 @@ def generate_index_html(dct_html):
     html = ''
     for category, list_posts in dct_categories.items():
         html += f'<h2>{category.title()}</h2>\n'
-        html += '<ul class="categorized-posts">\n'
         for d in list_posts:
-            s = '<h3 class="post-title"><a href="[HREF]">[TITLE]</a></h3>'
+            s = POST_LINK
             s = s.replace('[HREF]', d['href'])
             s = s.replace('[TITLE]', d['title'])
-            html += f'<li>{s}</li>\n'
-        html += '</ul>\n'
+            s = s.replace('[SUMMARY]', d['summary'])
+            s = s.replace('[IMAGE]', d['href'] + d['image'])
+            html += s
 
     dct_html['/']['html'] = dct_html['/']['html'].replace('{{content}}', html)
 

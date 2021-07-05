@@ -56,7 +56,7 @@ ul.navbar-top li a.active {
   }
 }
 
-/* Publications styling as title and subtitle */
+/* Posts styling as title and summary */
 h3.post-title a:link {
   text-decoration: none;
   color: var(--link-text-color);
@@ -70,9 +70,36 @@ h3.post-title a:active {
   color: var(--link-text-color-when-hover-active);
 }
 
-p.publication-subtitle {
+/* p.post-summary {
   margin-top: -15px;
+} */
+
+/* Post links */
+.row-post {
+  display: flex;
 }
+
+/* Create two columns: image followed by text */
+.column-image {
+  flex: 25%;
+  padding: 10px;
+}
+
+.column-text {
+  flex: 75%;
+  padding: 10px;
+}
+
+img.post-image {
+  width: 250px;
+  height: auto;
+}
+
+ul.categorized-posts {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+} */
 
 /* Table formatting */
 table, td, th {
