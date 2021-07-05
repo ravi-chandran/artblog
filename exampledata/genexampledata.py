@@ -56,14 +56,26 @@ def get_complementary_color(color):
 def gen_image(filepath, rgb_color, width_height_pixels=(640,400)):
     """Generate color block with filename as text inside the color block."""
     # Generate rectangular color block
-    img = Image.new('RGB', width_height_pixels, color=rgb_color)
-    d = ImageDraw.Draw(img)
+    #img = Image.new('RGB', width_height_pixels, color=rgb_color)
+    # Skip provided color and just let background be black
+    img = Image.new('RGB', width_height_pixels)
+    draw = ImageDraw.Draw(img)
+
+    complementary_color = get_complementary_color(rgb_color)
+
+    # Draw a circle
+    x = int(width_height_pixels[0] / 2)
+    y = int(width_height_pixels[1] / 2)
+    r = min(x,y) - 5
+    left_up_point = (x-r, y-r)
+    right_down_point = (x+r, y+r)
+    two_points = [left_up_point, right_down_point]
+    draw.ellipse(two_points, fill=complementary_color, width=10)
 
     # Insert filename text of complementary color inside the color block
     filename = os.path.basename(filepath)
     font = ImageFont.truetype("arial.ttf", 60)
-    complementary_color = get_complementary_color(rgb_color)
-    d.text((10,10), filename, font=font, fill=complementary_color)
+    draw.text((10,10), filename, font=font, fill=complementary_color)
 
     # Save file
     img.save(filepath)
