@@ -8,13 +8,12 @@ sources:
 # Must not be in a subfolder where posts are stored
 mainpage_folder: ~/Documents/exampledata/mainpage/
 
-# Order in which pages are to appear in menu
-Categories:
-  - About
+# Menu specifies post categories and their order.
+# Posts that don't match any specified categories will be under "Other"
+menu:
   - Category One
   - Category Two
   - Category Three
-  - Other
 
 # Where to store generated output
 output: ~/Documents/artblog_output
