@@ -6,7 +6,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="artblog",
-    version="0.2.0",
+    version="0.3.0",
     packages=['artblog'],
     package_dir={'artblog': 'artblog'},
     package_data={
