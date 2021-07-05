@@ -253,35 +253,53 @@ def markdown_to_html(filepath, metadata=True):
     return html, meta
 
 
-def generate_navbar_html(title2slug, current_slug=None):
+def generate_menu_folders(config):
+    """Generate folders to hold menu html pages."""
+    menu_folder = os.path.join(config['output'], 'menu')
+    os.mkdir(menu_folder)
+
+    if 'Other' not in config['menu']:
+        config['menu'].append('Other')
+
+    cat2slug = OrderedDict()
+    for category in config['menu']:
+        s = category.strip().lower().replace(' ','')
+        folder = os.path.join(menu_folder, s)
+        os.mkdir(folder)
+        cat2slug[category] = f'menu/{s}/'
+
+    return cat2slug
+
+
+def generate_navbar_html(cat2slug, active_category=None):
     """Generate the navigation bar."""
-    # template for each menu line item
-    MENU_LINE = '<li><a class="active" class="right" ' \
+    # Template for each menu line item
+    MENU_LINE = '<li><a class="active" ' \
                 'href="[HREF]">[VISIBLE]</a></li>'
 
-    count = 0
     navbar_html = ''
-    for title, slug in title2slug.items():
-        count += 1
+    for category, slug in cat2slug.items():
         s = f'      {MENU_LINE}\n'
-        s = s.replace('[VISIBLE]', title)
+        s = s.replace('[VISIBLE]', category)
         s = s.replace('[HREF]', slug)
-        if slug != current_slug:
+        if category != active_category:
             s = s.replace(' class="active"', '')
-        if count < len(title2slug):
-            s = s.replace(' class="right"', '')
         navbar_html += s
 
     navbar_html = navbar_html.strip()
     return navbar_html
 
 
-def generate_mainpage(config, base_html):
+def generate_mainpage(config, base_html, cat2slug):
     """Generate main landing page of blog in output folder."""
     shutil.copytree(
             config['mainpage_folder'],
             config['output'],
             dirs_exist_ok=True)
+
+    # Update base_html with navigation bar
+    navbar_html = generate_navbar_html(cat2slug)
+    base_html = base_html.replace('{{nav_line_items}}', navbar_html)
 
     # Generate html and update fields
     filepath = os.path.join(config['output'], 'index.md')
@@ -300,6 +318,59 @@ def generate_mainpage(config, base_html):
     # Write to output HTML files
     with open(mainpage_html, 'wt', encoding='utf-8') as f:
         f.write(html)
+
+
+def generate_posts(config, base_html, cat2slug):
+    """Copy posts to output folder as HTML."""
+    # Copy post .md files to output
+    output_posts = os.path.join(config['output'], 'posts')
+    for posts_folder in config['sources']:
+        shutil.copytree(
+                posts_folder,
+                output_posts,
+                dirs_exist_ok=True)
+
+    dct_html = OrderedDict()
+
+    glob_path = os.path.join(output_posts, '**/*')
+    for filepath in glob.glob(glob_path, recursive=True):
+        if not filepath.endswith(MARKDOWN_EXTENSIONS):
+            continue
+
+        # Generate html and update fields
+        html, meta = markdown_to_html(filepath)
+        os.remove(filepath)  # Delete post .md file
+        html = base_html.replace('{{content}}', html)
+        s = f'{meta["title"]}' + config['page_title_postfix']
+        html = html.replace('{{page_title}}', s)
+
+        # Update canonical link, slug provides root-relative URL
+        post_folder = os.path.split(filepath)[0]
+        post_folder = os.path.split(post_folder)[1]
+        meta['slug'] = 'posts/' + post_folder + '/'
+        if 'canonical' not in meta:
+            meta['canonical'] = config['base_url'] + '/' + meta['slug']
+        html = html.replace('{{canonical}}', meta['canonical'])
+
+        # Generate navigation bar with category highlighted
+        navbar_html = generate_navbar_html(
+            cat2slug, active_category=meta['category'])
+        html = html.replace('{{nav_line_items}}', navbar_html)
+
+        # Write HTML to file
+        dst_folder = os.path.join(config['output'], meta['slug'].strip('/'))
+        outfile = os.path.join(dst_folder, 'index.html')
+        if not os.path.isdir(dst_folder):
+            os.mkdir(dst_folder)
+
+        with open(outfile, 'wt', encoding='utf-8') as f:
+            f.write(html)
+        meta['outfile'] = outfile
+        meta['html'] = html
+        meta['page'] = False
+        dct_html[meta['slug']] = meta
+
+    return dct_html
 
 
 def generate_pages(config, base_html):
@@ -359,50 +430,6 @@ def generate_pages(config, base_html):
     return dct_html, title2slug
 
 
-def generate_posts(config, dct_html, base_html):
-    """Copy posts to output folder as HTML."""
-    # Copy post .md files to output
-    output_posts = os.path.join(config['output'], 'posts')
-    for posts_folder in config['sources']:
-        shutil.copytree(
-                posts_folder,
-                output_posts,
-                dirs_exist_ok=True)
-
-    glob_path = os.path.join(output_posts, '**/*')
-    for filepath in glob.glob(glob_path, recursive=True):
-        if not filepath.endswith(MARKDOWN_EXTENSIONS):
-            continue
-
-        # Generate html and update fields
-        html, meta = markdown_to_html(filepath)
-        os.remove(filepath)  # Delete post .md file
-        html = base_html.replace('{{content}}', html)
-        s = f'{meta["title"]}' + config['page_title_postfix']
-        html = html.replace('{{page_title}}', s)
-
-        # Update canonical link, slug provides root-relative URL
-        post_folder = os.path.split(filepath)[0]
-        post_folder = os.path.split(post_folder)[1]
-        meta['slug'] = 'posts/' + post_folder + '/'
-        if 'canonical' not in meta:
-            meta['canonical'] = config['base_url'] + '/' + meta['slug']
-        html = html.replace('{{canonical}}', meta['canonical'])
-
-        # Write HTML to file
-        dst_folder = os.path.join(config['output'], meta['slug'].strip('/'))
-        outfile = os.path.join(dst_folder, 'index.html')
-        if not os.path.isdir(dst_folder):
-            os.mkdir(dst_folder)
-
-        with open(outfile, 'wt', encoding='utf-8') as f:
-            f.write(html)
-        meta['outfile'] = outfile
-        meta['html'] = html
-        meta['page'] = False
-        dct_html[meta['slug']] = meta
-
-    return dct_html
 
 
 def get_categories(dct_html):
@@ -460,25 +487,20 @@ def main():
     if not preserve_output:
         remove_directory_contents(config['output'])
 
+    # Prepare html templates
     base_html, license_html, style_css = read_package_data_files()
     base_html = generate_base_html(config, base_html, license_html)
     generate_style_css(config, style_css)
 
-    generate_mainpage(config, base_html)
+    cat2slug = generate_menu_folders(config)
+    generate_mainpage(config, base_html, cat2slug)
+    dct_html = generate_posts(config, base_html, cat2slug)
 
     sys.exit()
-
-    # Update base_html with navigation bar
-    navbar_html = generate_navbar_html(title2slug)
-    base_html = base_html.replace('{{nav_line_items}}', navbar_html)
-
-
 
     # Generate page HTML files
     dct_html, title2slug = generate_pages(config, base_html)
 
-    # Generate article HTML files
-    dct_html = generate_posts(config, dct_html, base_html)
 
     # Generate the Home page content (index.html)
     dct_categories = generate_index_html(dct_html)
