@@ -6,13 +6,11 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="artblog",
-    version="0.1.0",
+    version="0.2.0",
     packages=['artblog'],
     package_dir={'artblog': 'artblog'},
     package_data={
-        'artblog': ['html/*.html'],
-        'artblog': ['css/*.css'],
-        'artblog': ['config/*.yml']
+        'artblog': ['html/*.html', 'css/*.css', 'config/*.yml'],
         },
 
     entry_points={
