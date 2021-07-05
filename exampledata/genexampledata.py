@@ -124,7 +124,7 @@ def main():
 
     shutil.copytree('favicon', os.path.join(BASE_FOLDER, 'favicon'), dirs_exist_ok=True)
     shutil.copytree('logo', os.path.join(BASE_FOLDER, 'logo'), dirs_exist_ok=True)
-    shutil.copytree('pages', os.path.join(BASE_FOLDER, 'pages'), dirs_exist_ok=True)
+    shutil.copytree('mainpage', os.path.join(BASE_FOLDER, 'mainpage'), dirs_exist_ok=True)
 
 if __name__ == "__main__":
     main()
