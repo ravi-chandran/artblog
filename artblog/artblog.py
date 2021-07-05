@@ -59,7 +59,8 @@ PROPERTY = '''
   <meta property="og:description" content="{{title}}">
   <meta property="og:type" content="article">
   <meta property="article:tag" content="{{category}}">
-'''.lstrip()
+{{TAGS}}
+'''.strip()
 
 def get_user_inputs():
     '''Get user arguments.'''
@@ -380,6 +381,15 @@ def generate_posts(config, base_html, cat2slug):
         html = html.replace('{{title}}', meta["title"])
         html = html.replace('{{category}}', meta["category"])
         
+        tag_property = ''
+        if 'tags' in meta:
+            list_tags = meta['tags'].split(',')
+            for tag in list_tags:
+                s = '  <meta property="article:tag" content="{{tag}}">\n'
+                tag_property += s.replace('{{tag}}', tag.strip())
+
+        html = html.replace('{{TAGS}}', tag_property)
+            
 
         # Write HTML to file
         dst_folder = os.path.join(config['output'], meta['slug'].strip('/'))
