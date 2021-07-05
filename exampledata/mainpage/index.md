@@ -1,5 +1,5 @@
 # My Awesome Art Blog
-- This is the main page that will be seen at the `baseurl`.
+- This `index.md` has the content for the main page that will be seen at the `baseurl`. It will be converted to `index.html`.
 
 - Edit it as you wish.
 
