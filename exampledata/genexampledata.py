@@ -42,6 +42,8 @@ MD_IMG_INSERT = '''
 
 '''.lstrip()
 
+CATEGORIES = ['Category One', 'Category Two', 'Category Three', 'Junk', 'Other']
+
 
 def get_complementary_color(color):
     """Given RGB color tuple, return complementary color tuple."""
@@ -96,7 +98,7 @@ def generate_data(random_seed, content_folder, first_article, num_articles):
         summary = lorem.get_sentence(count=1, sep=' ', comma=(0, 2), word_range=(9, 20))
         txt = txt.replace('{{SUMMARY}}', summary)
 
-        txt = txt.replace('{{CATEGORY}}', f'Category {rgb_color[0] % 4}')
+        txt = txt.replace('{{CATEGORY}}', random.choice(CATEGORIES))
 
         txt = txt.replace('{{FILENAME}}', imgfilename)
 
