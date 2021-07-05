@@ -83,9 +83,11 @@ def generate_data(random_seed, content_folder, first_article, num_articles):
 
         # Generate image for article
         rgb_color = (random.randint(0,255), random.randint(0,255), random.randint(0,255))
+        width = random.randint(400, 1600)
+        height = random.randint(400, 1600)
         imgfilename = f'image{n}.jpg'
         imgfilepath = os.path.join(folder, imgfilename)
-        gen_image(imgfilepath, rgb_color)
+        gen_image(imgfilepath, rgb_color, width_height_pixels=(width, height))
 
         # Generate text for article
         title = lorem.get_sentence(count=1, sep=' ', comma=(0, 2), word_range=(2, 8))
@@ -114,6 +116,7 @@ def generate_data(random_seed, content_folder, first_article, num_articles):
         with open(mdfilepath, 'wt', encoding='utf-8') as f:
             f.write(txt)
 
+    print(f'{num_articles} generated in {content_folder}')
 
 def main():
     generate_data(RANDOM_SEED_1, CONTENT_FOLDER_1, FIRST_ARTICLE_1, NUM_ARTICLES_1)
