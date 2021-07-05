@@ -45,6 +45,13 @@ POST_LINK = '''
 
 '''.lstrip()
 
+ROBOTS_TXT = '''
+User-agent: *
+Host: {{base_url}}
+Disallow: /cgi-bin/
+Disallow: /tmp/
+'''.lstrip()
+
 def get_user_inputs():
     '''Get user arguments.'''
     parser = argparse.ArgumentParser(
@@ -425,6 +432,14 @@ def generate_category_pages(config, base_html, dct_html, cat2slug):
             f.write(html)
 
 
+def generate_robots_txt(config):
+    """Create an empty robots.txt file."""
+    filepath = os.path.join(config['output'], 'robots.txt')
+    s = ROBOTS_TXT.replace('{{base_url}}', config['base_url'])
+    with open(filepath, 'wt') as f:
+        f.write(s)
+
+
 def main():
     config, preserve_output = get_user_inputs()
 
@@ -443,7 +458,9 @@ def main():
 
     generate_category_pages(config, base_html, dct_html, cat2slug)
 
-    print('Done.')
+    generate_robots_txt(config)
+
+    print(f'Site generated at: {config["output"]}')
 
 
 if __name__ == "__main__":
