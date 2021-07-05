@@ -24,6 +24,14 @@ CONFIG_TEMPLATE = os.path.join('config', 'config.yml')
 
 MARKDOWN_EXTENSIONS = ('.md')
 
+LOGO_LINK = '''
+<div class="logo">
+    <a href="/">
+        <img src="[LOGOFILE]" alt="logo" class="logo-image">
+    </a>
+</div>
+'''.lstrip()
+
 POST_LINK = '''
 <div class="row-post">
   <div class="column-image">
@@ -205,7 +213,9 @@ def generate_base_html(config, base_html, license_html):
         base_html = base_html.replace('{{logo}}', '')
     else:
         logofile = '/site_images/' + os.path.basename(config['logo'])
-        s = f'<div class="logo"><img src="{logofile}" alt="logo"></div>'
+        s = LOGO_LINK.replace('[LOGOFILE]', logofile)
+        #s = s.replace('[HREF]', config['base_url'])
+        #s = f'<div class="logo"><img src="{logofile}" alt="logo"></div>'
         base_html = base_html.replace('{{logo}}', s)
         dstfile = os.path.join(outpath, os.path.basename(config['logo']))
         shutil.copyfile(config['logo'], dstfile)
@@ -458,12 +468,14 @@ def main():
 
     sys.exit()
 
-    # Generate page HTML files
-    dct_html, title2slug = generate_pages(config, base_html)
-
     # Update base_html with navigation bar
     navbar_html = generate_navbar_html(title2slug)
     base_html = base_html.replace('{{nav_line_items}}', navbar_html)
+
+
+
+    # Generate page HTML files
+    dct_html, title2slug = generate_pages(config, base_html)
 
     # Generate article HTML files
     dct_html = generate_posts(config, dct_html, base_html)
