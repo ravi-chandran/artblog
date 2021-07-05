@@ -6,18 +6,21 @@ sources:
 
 # Folder where pages are stored
 # Must not be in a subfolder where posts are stored
-pages_folder: ~/Documents/exampledata/pages/
+mainpage_folder: ~/Documents/exampledata/mainpage/
 
 # Order in which pages are to appear in menu
-pages_order:
-  - index.md
-  - anotherthing.md
-  - about.md
+Categories:
+  - About
+  - Category One
+  - Category Two
+  - Category Three
+  - Other
 
 # Where to store generated output
 output: ~/Documents/artblog_output
 
-# Include image at the top of every page above the menu
+# Logo image acts as the button to return to the main page
+# It will be at the top of every page above the menu
 # Example designed using https://flamingtext.com/ for non-commercial use
 # About 300 pixels wide, and less than 80 pixels in height works well
 logo: ~/Documents/exampledata/logo/example_art_blog.png
@@ -27,10 +30,10 @@ logo: ~/Documents/exampledata/logo/example_art_blog.png
 # 32x32 pixels seems suitable
 favicon: ~/Documents/exampledata/favicon/favicon-32x32.png
 
-# Information about yourself and the site
+# The "author" will be used for the copyright notice in the footer.
 author: Artsy Fartsy
 
-# This doesn't have to be different from your name
+# The "site_name" is used as part of the tab name.
 site_name: My Awesome Art Blog
 
 # Note: update license.html using https://creativecommons.org/choose/
