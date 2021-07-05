@@ -281,7 +281,7 @@ def generate_navbar_html(cat2slug, active_category=None):
     for category, slug in cat2slug.items():
         s = f'      {MENU_LINE}\n'
         s = s.replace('[VISIBLE]', category)
-        s = s.replace('[HREF]', slug)
+        s = s.replace('[HREF]', '/' + slug)
         if category != active_category:
             s = s.replace(' class="active"', '')
         navbar_html += s
@@ -366,118 +366,63 @@ def generate_posts(config, base_html, cat2slug):
         with open(outfile, 'wt', encoding='utf-8') as f:
             f.write(html)
         meta['outfile'] = outfile
-        meta['html'] = html
+        # meta['html'] = html  # debug only
         meta['page'] = False
         dct_html[meta['slug']] = meta
 
     return dct_html
 
 
-def generate_pages(config, base_html):
-    """Generate pages in output folder."""
-    # Copy page .md files to output
-    output_pages = os.path.join(config['output'], 'pages')
-    shutil.copytree(
-            config['pages_folder'],
-            output_pages,
-            dirs_exist_ok=True)
+def generate_category_pages(config, base_html, dct_html, cat2slug):
+    """Generate html pages for each category."""
+    # Prepare html content (list of posts) for each category
+    content = OrderedDict()
+    for category in cat2slug:
+        content[category] = f'<h2>{category.title()}</h2>\n'
+
+    # Find posts for current category
+    for slug, meta in dct_html.items():
+        s = POST_LINK
+        s = s.replace('[HREF]', '/' + meta['slug'])
+        s = s.replace('[TITLE]', meta['title'])
+        if 'summary' in meta:
+            s = s.replace('[SUMMARY]', meta['summary'])
+        else:
+            s = s.replace('[SUMMARY]', '')
+
+        if 'image' in meta:
+            s = s.replace('[IMAGE]', '/' + meta['slug'] + meta['image'])
+        else:
+            s = s.replace('[IMAGE]', '')
+
+        category = None
+        if 'category' in meta:
+            category = meta['category']
+
+        if category in content:
+            content[category] += s
+        else:
+            content['Other'] += s
 
     # Create HTML content for each page
-    dct_html = OrderedDict()
-    title2slug = OrderedDict()
-    for page_file in config['pages_order']:
-        filepath = os.path.join(output_pages, page_file)
-        page_file = os.path.basename(filepath)
+    for category, slug in cat2slug.items():
+        # Generate navigation bar with category highlighted
+        navbar_html = generate_navbar_html(cat2slug, active_category=category)
+        html = base_html.replace('{{nav_line_items}}', navbar_html)
 
-        # Generate html and update fields
-        html, meta = markdown_to_html(filepath)
-        os.remove(filepath)  # Remove source markdown from output
-        if page_file == 'index.md':
-            html = base_html
-        else:
-            html = base_html.replace('{{content}}', html)
+        # Update content with list of posts
+        html = html.replace('{{content}}', content[category])
+
         s = f'{meta["title"]}' + config['page_title_postfix']
         html = html.replace('{{page_title}}', s)
 
         # Update canonical link, slug provides root-relative URL
-        page_file_html = os.path.splitext(page_file)[0] + '.html'
-        meta['slug'] = '/'
-        if page_file != 'index.md':
-            meta['slug'] += 'pages/' + page_file_html
-        meta['canonical'] = config['base_url'] + meta['slug']
-        html = html.replace('{{canonical}}', meta['canonical'])
+        html = html.replace('{{canonical}}', slug)
 
-        if page_file != 'index.md':
-            meta['outfile'] = os.path.join(output_pages, page_file_html)
-        else:
-            meta['outfile'] = os.path.join(config['output'], page_file_html)
-        meta['html'] = html
-        meta['page'] = True
-        dct_html[meta['slug']] = meta
-        title2slug[meta["title"]] = meta['slug']
-
-    # Create unique navigation bar for each page
-    for current_slug in dct_html:
-        navbar_html = generate_navbar_html(title2slug, current_slug=current_slug)
-        html = dct_html[current_slug]['html'].replace('{{nav_line_items}}', navbar_html)
-        dct_html[current_slug]['html'] = html
-
-    # Write to output HTML files
-    for _, meta in dct_html.items():
-        with open(meta['outfile'], 'wt', encoding='utf-8') as f:
-            f.write(meta['html'])
-
-    return dct_html, title2slug
-
-
-
-
-def get_categories(dct_html):
-    """Generate the index page with links to posts."""
-    dct = OrderedDict()
-    for slug, meta in dct_html.items():
-        if meta['page']:
-            continue
-        if 'category' in meta:
-            if meta['category'] not in dct:
-                dct[meta['category']] = []
-            d = OrderedDict()
-            d['title'] = meta['title']
-            d['href'] = meta['slug']
-
-            d['summary'] = ''
-            if 'summary' in meta:
-                d['summary'] = meta['summary']
-
-            d['image'] = ''
-            if 'image' in meta:
-                d['image'] = meta['image']
-
-            dct[meta['category']].append(d.copy())
-
-    return dct
-
-
-def generate_index_html(dct_html):
-    """Generate the index.html given the categorized information."""
-    dct_categories = get_categories(dct_html)
-    html = ''
-    for category, list_posts in dct_categories.items():
-        html += f'<h2>{category.title()}</h2>\n'
-        for d in list_posts:
-            s = POST_LINK
-            s = s.replace('[HREF]', d['href'])
-            s = s.replace('[TITLE]', d['title'])
-            s = s.replace('[SUMMARY]', d['summary'])
-            s = s.replace('[IMAGE]', d['href'] + d['image'])
-            html += s
-
-    dct_html['/']['html'] = dct_html['/']['html'].replace('{{content}}', html)
-
-    with open(dct_html['/']['outfile'], 'wt', encoding='utf-8') as f:
-        f.write(dct_html['/']['html'])
-
-    return dct_categories
+        # Write to output HTML files
+        filepath = os.path.join(config['output'], slug, 'index.html')
+        with open(filepath, 'wt', encoding='utf-8') as f:
+            f.write(html)
 
 
 def main():
@@ -496,14 +441,7 @@ def main():
     generate_mainpage(config, base_html, cat2slug)
     dct_html = generate_posts(config, base_html, cat2slug)
 
-    sys.exit()
-
-    # Generate page HTML files
-    dct_html, title2slug = generate_pages(config, base_html)
-
-
-    # Generate the Home page content (index.html)
-    dct_categories = generate_index_html(dct_html)
+    generate_category_pages(config, base_html, dct_html, cat2slug)
 
     print('Done.')
 
