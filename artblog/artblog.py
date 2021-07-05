@@ -71,12 +71,10 @@ def get_user_inputs():
     config['sources'] = list_post_sources
     config['output'] = check_directory(config['output'], warn=False)
 
-    # Check and update page source file paths
-    config['pages_folder'] = check_directory(config['pages_folder'])
-    list_pages = []
-    for page_filename in config['pages_order']:
-        page_filepath = os.path.join(config['pages_folder'], page_filename)
-        list_pages.append(check_file(page_filepath))
+    # Check mainpage folder
+    config['mainpage_folder'] = check_directory(config['mainpage_folder'])
+    index_md_file = os.path.join(config['mainpage_folder'], 'index.md')
+    check_file(index_md_file)
 
     # Check logo and favicon if present
     if 'logo' in config:
@@ -215,25 +213,29 @@ def generate_base_html(config, base_html, license_html):
     return base_html
 
 
-def markdown_to_html(filepath):
+def markdown_to_html(filepath, metadata=True):
     """Convert markdown to HTML."""
     with open(filepath, 'rt', encoding='utf-8') as f:
         txt = f.read()
 
-    # Separate metadata from markdown text
-    loc = txt.find('---', 3)  # Find 2nd occurrence of "---"
-    if loc < 0:
-        print(f'ERROR: Cannot find metadata in {filepath}')
-        sys.exit(1)
+    meta = None
+    if metadata:
+        # Separate metadata from markdown text
+        loc = txt.find('---', 3)  # Find 2nd occurrence of "---"
+        if loc < 0:
+            print(f'ERROR: Cannot find metadata in {filepath}')
+            sys.exit(1)
 
-    meta_txt = txt[:loc]
-    md_txt = txt[loc+3:]  # skip over 2nd occurrence of "---"
+        meta_txt = txt[:loc]
+        md_txt = txt[loc+3:]  # skip over 2nd occurrence of "---"
 
-    # Extract metadata
-    meta = yaml.load(meta_txt, Loader=yaml.BaseLoader)
+        # Extract metadata
+        meta = yaml.load(meta_txt, Loader=yaml.BaseLoader)
 
-    # Add title to markdown
-    md_txt = f'# {meta["title"]}\n---\n' + md_txt
+        # Add title to markdown
+        md_txt = f'# {meta["title"]}\n---\n' + md_txt
+    else:
+        md_txt = txt
 
     # Convert markdown to html
     html = mistune.html(md_txt)
@@ -262,6 +264,32 @@ def generate_navbar_html(title2slug, current_slug=None):
 
     navbar_html = navbar_html.strip()
     return navbar_html
+
+
+def generate_mainpage(config, base_html):
+    """Generate main landing page of blog in output folder."""
+    shutil.copytree(
+            config['mainpage_folder'],
+            config['output'],
+            dirs_exist_ok=True)
+
+    # Generate html and update fields
+    filepath = os.path.join(config['output'], 'index.md')
+    html, _ = markdown_to_html(filepath, metadata=False)
+    os.remove(filepath)  # Remove source markdown from output
+    html = base_html.replace('{{content}}', html)
+    s = 'Main' + config['page_title_postfix']
+    html = html.replace('{{page_title}}', s)
+
+    # Update canonical link, slug provides root-relative URL
+    mainpage_html = os.path.splitext(filepath)[0] + '.html'
+    slug = '/'
+    canonical = config['base_url'] + slug
+    html = html.replace('{{canonical}}', canonical)
+
+    # Write to output HTML files
+    with open(mainpage_html, 'wt', encoding='utf-8') as f:
+        f.write(html)
 
 
 def generate_pages(config, base_html):
@@ -379,11 +407,11 @@ def get_categories(dct_html):
             d = OrderedDict()
             d['title'] = meta['title']
             d['href'] = meta['slug']
-            
+
             d['summary'] = ''
             if 'summary' in meta:
                 d['summary'] = meta['summary']
-            
+
             d['image'] = ''
             if 'image' in meta:
                 d['image'] = meta['image']
@@ -425,6 +453,10 @@ def main():
     base_html, license_html, style_css = read_package_data_files()
     base_html = generate_base_html(config, base_html, license_html)
     generate_style_css(config, style_css)
+
+    generate_mainpage(config, base_html)
+
+    sys.exit()
 
     # Generate page HTML files
     dct_html, title2slug = generate_pages(config, base_html)
