@@ -16,7 +16,8 @@ venv1\Scripts\python -m pip install mistune==2.0.0rc1
 
 ## Development Iterations
 - [Work in development mode](https://packaging.python.org/guides/distributing-packages-using-setuptools/#working-in-development-mode):
-- Perform two basic tests.
+
+- Perform tests. (TODO)
 
 ```bat
 cd artblog
@@ -53,7 +54,7 @@ python -m twine upload --repository testpypi dist/*
 
 - Note that TestPyPI provides the following install. However, if the dependencies cannot be found at `test.pypi.org`, they will need to be installed manually.
 ```bat
-pip install -i https://test.pypi.org/simple/ artblog
+python -m pip install -i https://test.pypi.org/simple/ artblog
 ```
 
 ## Upload To PyPI
